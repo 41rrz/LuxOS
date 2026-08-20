@@ -1,0 +1,19 @@
+{
+  "name": "LuxOS",
+  "short_name": "LuxOS",
+  "description": "A browser-based mobile operating system experience.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#07070a",
+  "theme_color": "#07070a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./lux-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
