@@ -1,115 +1,133 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Accent, AppId, LuxSettings } from '../system/types'
 import { loadNotes, saveNotes } from '../system/storage'
 
 interface Props {
   appId: AppId
   settings: LuxSettings
-  updateSettings: (next: LuxSettings) => void
+  updateSettings: (settings: LuxSettings) => void
+  openApp: (id: AppId) => void
   onReset: () => void
 }
 
 const accents: Accent[] = ['violet', 'blue', 'pink', 'orange', 'green']
 
-function LuxHome() {
+function LuxHome({ openApp }: Pick<Props, 'openApp'>) {
   return (
-    <div className="app-content page-stack">
-      <section className="hero-card glass-card">
-        <div className="eyebrow">LUXOS / HOME</div>
-        <h1>One place for everything Lux.</h1>
-        <p>LuxOS is now running as a real app shell instead of a normal website. This dashboard can become the entry point for your portfolio, tools, downloads, experiments, and private utilities.</p>
+    <div className="app-page lux-home-page">
+      <section className="aero-hero">
+        <div>
+          <span className="kicker">LUXOS DESKTOP</span>
+          <h1>Welcome to LuxOS.</h1>
+          <p>A browser desktop built around your projects, media, tools and experiments.</p>
+        </div>
+        <div className="hero-mark">L</div>
       </section>
-      <div className="card-grid">
-        <article className="glass-card compact-card"><span>BUILD</span><strong>0.1.0</strong><small>Foundation</small></article>
-        <article className="glass-card compact-card"><span>STATUS</span><strong>Online</strong><small>Browser runtime</small></article>
-        <article className="glass-card compact-card"><span>MODE</span><strong>Local</strong><small>Data stays in this browser</small></article>
+      <div className="quick-grid">
+        <button onClick={() => openApp('projects')}><strong>Projects</strong><small>Open your workspace</small></button>
+        <button onClick={() => openApp('gallery')}><strong>Gallery</strong><small>Browse artwork & media</small></button>
+        <button onClick={() => openApp('files')}><strong>Computer</strong><small>Explore LuxOS storage</small></button>
       </div>
+      <section className="info-panel">
+        <div><span>Edition</span><strong>LuxOS Desktop</strong></div>
+        <div><span>Version</span><strong>0.2 Preview</strong></div>
+        <div><span>Runtime</span><strong>Web / GitHub Pages</strong></div>
+      </section>
+    </div>
+  )
+}
+
+function FileExplorer() {
+  const folders = ['Desktop', 'Documents', 'Pictures', 'Projects', 'Downloads', 'Lux Archive']
+  const [selected, setSelected] = useState<string | null>(null)
+  return (
+    <div className="explorer-shell">
+      <aside className="explorer-sidebar">
+        <strong>Favorites</strong>
+        {['Desktop', 'Downloads', 'Recent Places'].map(item => <button key={item}>{item}</button>)}
+        <strong>Libraries</strong>
+        {['Documents', 'Pictures', 'Projects'].map(item => <button key={item}>{item}</button>)}
+      </aside>
+      <section className="explorer-main">
+        <div className="explorer-toolbar"><button>←</button><button>→</button><div>Computer ▸ LuxOS (C:)</div><input placeholder="Search Computer" /></div>
+        <div className="folder-grid">
+          {folders.map((folder, index) => (
+            <button key={folder} className={selected === folder ? 'selected' : ''} onClick={() => setSelected(folder)}>
+              <span className={`folder-icon folder-${index}`} />
+              <strong>{folder}</strong>
+              <small>{index % 2 ? 'Folder' : 'System folder'}</small>
+            </button>
+          ))}
+        </div>
+        <div className="drive-row"><span className="drive-icon" /><div><strong>Local Disk (C:)</strong><div className="drive-meter"><i /></div><small>82 GB free of 128 GB</small></div></div>
+      </section>
     </div>
   )
 }
 
 function Gallery() {
-  const items = ['AURA', 'NOAH', 'LUX', 'AIRZ', 'VOID', 'ARCHIVE']
-  return (
-    <div className="app-content">
-      <div className="section-title"><span>Library</span><strong>Gallery</strong></div>
-      <div className="gallery-grid">
-        {items.map((item, i) => <div className={`gallery-tile tile-${i + 1}`} key={item}><span>{item}</span></div>)}
-      </div>
-    </div>
-  )
+  const cards = ['AURA', 'NOAH', 'LUX', 'AIRZ', 'VOID', 'ARCHIVE']
+  return <div className="app-page"><div className="page-heading"><span>Pictures Library</span><h2>Gallery</h2></div><div className="desktop-gallery">{cards.map((card, index) => <button className={`media-card media-${index + 1}`} key={card}><span>{card}</span></button>)}</div></div>
 }
 
 function Notes() {
-  const [value, setValue] = useState(() => loadNotes())
+  const [value, setValue] = useState(loadNotes)
   useEffect(() => saveNotes(value), [value])
-  return (
-    <div className="app-content notes-app">
-      <div className="section-title"><span>Local</span><strong>Notes</strong></div>
-      <textarea value={value} onChange={event => setValue(event.target.value)} placeholder="Write something…" spellCheck />
-      <small>Saved automatically on this device.</small>
-    </div>
-  )
+  return <div className="notes-shell"><div className="notes-ribbon"><button>New</button><button>Save</button><button>Format</button><span>Saved automatically</span></div><textarea value={value} onChange={event => setValue(event.target.value)} placeholder="Type a note..." /></div>
 }
 
 function Projects() {
-  const rows = [
-    ['LuxOS', 'Active', 'Browser OS'],
-    ['LuxWorkflow', 'Active', 'Inventory'],
-    ['Lux Scan Bridge', 'Concept', 'Desktop'],
-    ['VR Project', 'Prototype', 'Roblox'],
+  const projects = [
+    ['LuxOS', 'Active', 'Desktop web OS'],
+    ['LuxWorkflow', 'Active', 'Warehouse workflow app'],
+    ['Lux Scan Bridge', 'Concept', 'Desktop utilities'],
+    ['VR Projects', 'Prototype', 'Roblox & PCVR experiments'],
   ]
-  return <div className="app-content"><div className="section-title"><span>Workspace</span><strong>Projects</strong></div><div className="list-card glass-card">{rows.map(([a,b,c]) => <div className="list-row" key={a}><div><strong>{a}</strong><small>{c}</small></div><span>{b}</span></div>)}</div></div>
-}
-
-function Files() {
-  return <div className="app-content"><div className="section-title"><span>On LuxOS</span><strong>Files</strong></div><div className="file-grid">{['Images','Projects','Downloads','Themes','Archive','System'].map((name, i) => <div className="file-folder glass-card" key={name}><div className={`folder-mark f-${i}`} /><strong>{name}</strong><small>Empty for now</small></div>)}</div></div>
+  return <div className="app-page"><div className="page-heading"><span>Workspace</span><h2>Projects</h2></div><div className="project-list">{projects.map(([name, state, description]) => <button key={name}><span className="project-orb" /><div><strong>{name}</strong><small>{description}</small></div><em>{state}</em></button>)}</div></div>
 }
 
 function Browser() {
   const [query, setQuery] = useState('')
-  const open = () => {
-    if (!query.trim()) return
-    const target = /^https?:\/\//i.test(query) ? query : `https://www.google.com/search?q=${encodeURIComponent(query)}`
-    window.open(target, '_blank', 'noopener,noreferrer')
-  }
-  return <div className="app-content browser-app"><div className="browser-hero"><span className="browser-orb" /><h1>Lux Browser</h1><p>Search the web or enter an address.</p></div><div className="browser-field glass-card"><input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && open()} placeholder="Search or enter website" /><button onClick={open}>Go</button></div><small>Links open in a new browser tab because many websites block iframe embedding.</small></div>
-}
-
-function Themes({ settings, updateSettings }: Pick<Props, 'settings' | 'updateSettings'>) {
-  return <div className="app-content"><div className="section-title"><span>Appearance</span><strong>Themes</strong></div><div className="theme-preview glass-card"><span className="wallpaper-preview" /><div><strong>Lux Aurora</strong><small>Dynamic dark gradient</small></div></div><div className="accent-grid">{accents.map(accent => <button key={accent} className={`accent-swatch swatch-${accent} ${settings.accent === accent ? 'selected' : ''}`} onClick={() => updateSettings({ ...settings, accent })}><span /><small>{accent}</small></button>)}</div></div>
+  const target = useMemo(() => {
+    const value = query.trim()
+    if (!value) return ''
+    return /^https?:\/\//i.test(value) ? value : `https://www.google.com/search?q=${encodeURIComponent(value)}`
+  }, [query])
+  const open = () => target && window.open(target, '_blank', 'noopener,noreferrer')
+  return <div className="browser-shell"><div className="browser-chrome"><button>←</button><button>→</button><button>↻</button><input value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => event.key === 'Enter' && open()} placeholder="Search or enter address" /><button onClick={open}>Go</button></div><div className="browser-start"><span className="browser-logo">L</span><h1>Lux Browser</h1><p>Search the web from LuxOS.</p><div className="browser-search"><input value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => event.key === 'Enter' && open()} placeholder="Search the web" /><button onClick={open}>Search</button></div></div></div>
 }
 
 function Terminal() {
-  const [lines, setLines] = useState(['LuxOS shell v0.1.0', 'type “help” to begin'])
-  const [cmd, setCmd] = useState('')
+  const [lines, setLines] = useState(['LuxOS Command Shell [Version 0.2.0]', '(c) Lux. All rights reserved.', ''])
+  const [command, setCommand] = useState('')
   const run = () => {
-    const input = cmd.trim().toLowerCase()
-    if (!input) return
-    let response = `command not found: ${input}`
-    if (input === 'help') response = 'commands: help, about, clear, date, whoami'
-    if (input === 'about') response = 'LuxOS — browser operating system experience'
-    if (input === 'date') response = new Date().toString()
-    if (input === 'whoami') response = 'lux-user'
-    if (input === 'clear') { setLines([]); setCmd(''); return }
-    setLines(prev => [...prev, `lux@os ~ % ${cmd}`, response])
-    setCmd('')
+    const raw = command.trim()
+    const cmd = raw.toLowerCase()
+    if (!cmd) return
+    if (cmd === 'clear' || cmd === 'cls') { setLines([]); setCommand(''); return }
+    const response = cmd === 'help' ? 'Commands: help, ver, whoami, date, echo, clear' : cmd === 'ver' ? 'LuxOS Desktop 0.2.0' : cmd === 'whoami' ? 'lux-user' : cmd === 'date' ? new Date().toString() : cmd.startsWith('echo ') ? raw.slice(5) : `'${raw}' is not recognized as an internal command.`
+    setLines(current => [...current, `C:\\Users\\Lux>${raw}`, response, ''])
+    setCommand('')
   }
-  return <div className="terminal-app"><div className="terminal-output">{lines.map((line, i) => <div key={`${line}-${i}`}>{line}</div>)}</div><div className="terminal-input"><span>lux@os ~ %</span><input value={cmd} autoFocus onChange={e => setCmd(e.target.value)} onKeyDown={e => e.key === 'Enter' && run()} /></div></div>
+  return <div className="cmd-shell"><div>{lines.map((line, index) => <p key={`${index}-${line}`}>{line || '\u00a0'}</p>)}</div><label><span>C:\Users\Lux&gt;</span><input autoFocus value={command} onChange={event => setCommand(event.target.value)} onKeyDown={event => event.key === 'Enter' && run()} /></label></div>
 }
 
-function Settings({ settings, updateSettings, onReset }: Omit<Props, 'appId'>) {
-  return <div className="app-content"><div className="section-title"><span>LuxOS</span><strong>Settings</strong></div><div className="settings-group glass-card"><div className="setting-row"><div><strong>Reduce Motion</strong><small>Use simpler transitions</small></div><button className={`switch ${settings.reduceMotion ? 'on' : ''}`} onClick={() => updateSettings({ ...settings, reduceMotion: !settings.reduceMotion })}><span /></button></div><div className="setting-row"><div><strong>App Labels</strong><small>Show names below icons</small></div><button className={`switch ${settings.showLabels ? 'on' : ''}`} onClick={() => updateSettings({ ...settings, showLabels: !settings.showLabels })}><span /></button></div><div className="setting-row slider-row"><div><strong>Glass Intensity</strong><small>{settings.glassIntensity}%</small></div><input type="range" min="25" max="100" value={settings.glassIntensity} onChange={e => updateSettings({ ...settings, glassIntensity: Number(e.target.value) })} /></div></div><button className="danger-button" onClick={onReset}>Reset LuxOS data</button></div>
+function Themes({ settings, updateSettings }: Pick<Props, 'settings' | 'updateSettings'>) {
+  return <div className="app-page"><div className="page-heading"><span>Personalization</span><h2>Choose your LuxOS color</h2></div><div className="wallpaper-sample"><span /><strong>Lux Aurora</strong><small>Default desktop background</small></div><div className="accent-picker">{accents.map(accent => <button key={accent} className={`accent-${accent} ${settings.accent === accent ? 'active' : ''}`} onClick={() => updateSettings({ ...settings, accent })}><span /><strong>{accent}</strong></button>)}</div></div>
+}
+
+function Settings({ settings, updateSettings, onReset, openApp }: Pick<Props, 'settings' | 'updateSettings' | 'onReset' | 'openApp'>) {
+  return <div className="control-panel-page"><div className="control-panel-head"><span className="control-panel-mark">L</span><div><h2>Control Panel</h2><p>Adjust the way LuxOS looks and behaves.</p></div></div><div className="setting-categories"><button onClick={() => openApp('themes')}><span>◈</span><div><strong>Appearance and Personalization</strong><small>Colors, glass and desktop visuals</small></div></button><section><div><strong>Glass intensity</strong><small>{settings.glassIntensity}%</small></div><input type="range" min="35" max="100" value={settings.glassIntensity} onChange={event => updateSettings({ ...settings, glassIntensity: Number(event.target.value) })} /></section><section><div><strong>Reduce motion</strong><small>Use simpler desktop animations</small></div><button className={`toggle ${settings.reduceMotion ? 'on' : ''}`} onClick={() => updateSettings({ ...settings, reduceMotion: !settings.reduceMotion })}><i /></button></section><section><div><strong>Desktop icon labels</strong><small>Show names beneath desktop icons</small></div><button className={`toggle ${settings.showDesktopLabels ? 'on' : ''}`} onClick={() => updateSettings({ ...settings, showDesktopLabels: !settings.showDesktopLabels })}><i /></button></section></div><button className="reset-button" onClick={onReset}>Reset LuxOS local data</button></div>
 }
 
 export function AppContent(props: Props) {
-  if (props.appId === 'lux') return <LuxHome />
+  if (props.appId === 'lux') return <LuxHome openApp={props.openApp} />
+  if (props.appId === 'files') return <FileExplorer />
   if (props.appId === 'gallery') return <Gallery />
   if (props.appId === 'notes') return <Notes />
   if (props.appId === 'projects') return <Projects />
-  if (props.appId === 'files') return <Files />
   if (props.appId === 'browser') return <Browser />
-  if (props.appId === 'themes') return <Themes settings={props.settings} updateSettings={props.updateSettings} />
   if (props.appId === 'terminal') return <Terminal />
-  return <Settings settings={props.settings} updateSettings={props.updateSettings} onReset={props.onReset} />
+  if (props.appId === 'themes') return <Themes settings={props.settings} updateSettings={props.updateSettings} />
+  return <Settings settings={props.settings} updateSettings={props.updateSettings} onReset={props.onReset} openApp={props.openApp} />
 }

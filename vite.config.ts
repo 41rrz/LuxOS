@@ -6,6 +6,6 @@ export default defineConfig({
   base: './',
   build: {
     sourcemap: false,
-    target: 'es2022'
-  }
+    target: 'es2022',
+  },
 })

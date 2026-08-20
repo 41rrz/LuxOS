@@ -1,60 +1,34 @@
-# LuxOS
+# LuxOS Desktop v0.2
 
-LuxOS is a browser-based mobile operating system experience built with React, TypeScript, and Vite.
+LuxOS is a desktop-style browser operating system experience built with React, TypeScript and Vite.
 
 ## Local development
-
-Requires Node.js 20.19+ or 22.12+.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the local address shown by Vite.
-
 ## Production build
 
 ```bash
 npm run build
-npm run preview
 ```
 
-## Deploy to GitHub Pages
+## GitHub Pages
 
-1. Create a new GitHub repository named `LuxOS` (or any name you want).
-2. Push this project to the `main` branch.
-3. In the repository, open **Settings → Pages**.
-4. Set **Source** to **GitHub Actions**.
-5. Push a commit or run the included **Deploy LuxOS to GitHub Pages** workflow manually.
+The included `.github/workflows/deploy-pages.yml` workflow builds and deploys the `dist` folder whenever `main` is pushed.
 
-The included Vite config uses relative asset paths so a project-site repository works without hard-coding the repository name.
+In GitHub, set **Settings → Pages → Source** to **GitHub Actions**.
 
-## v0.1 foundation
+## Interaction
 
-- Boot sequence
-- Lock screen
-- Live clock/date
-- Home screen and glass dock
-- Long-press edit mode
-- Drag-to-reorder icons in edit mode
-- App launch/close animation
-- Control Center
-- Settings app
-- Notes with local persistence
-- Theme/accent customization
-- PWA manifest + service worker
-- GitHub Pages deployment workflow
+- Double-click desktop icons to open apps.
+- Drag windows by their title bars.
+- Double-click a title bar to maximize/restore.
+- Use the title-bar buttons to minimize, maximize and close.
+- Right-click the desktop for a desktop context menu.
+- Start menu provides apps, search, lock, restart and shutdown.
+- Notes and appearance settings persist in local browser storage.
 
-## Next milestones
-
-- Real multi-page home screen
-- Widgets
-- Folders
-- App switcher
-- Notification center
-- Wallpapers gallery
-- LuxOS Store / app registry loader
-- Better touch drag physics
-- Sound/haptics layer
-- Custom icon builder
+The login password field is visual only in this preview. A static GitHub Pages frontend is not a secure authentication system.

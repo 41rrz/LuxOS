@@ -1,19 +1,11 @@
 {
-  "name": "LuxOS",
+  "name": "LuxOS Desktop",
   "short_name": "LuxOS",
-  "description": "A browser-based mobile operating system experience.",
   "start_url": "./",
-  "scope": "./",
-  "display": "standalone",
-  "background_color": "#07070a",
-  "theme_color": "#07070a",
-  "orientation": "any",
+  "display": "fullscreen",
+  "background_color": "#02040a",
+  "theme_color": "#101827",
   "icons": [
-    {
-      "src": "./lux-mark.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
+    { "src": "./lux-mark.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }
