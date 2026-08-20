@@ -1,11 +1,17 @@
 {
-  "name": "LuxOS Desktop",
+  "name": "LuxOS Desktop Mega",
   "short_name": "LuxOS",
   "start_url": "./",
   "display": "fullscreen",
   "background_color": "#02040a",
   "theme_color": "#101827",
   "icons": [
-    { "src": "./lux-mark.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
-  ]
+    {
+      "src": "./lux-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "description": "LuxOS Desktop 1.0 Mega Update \u2014 a browser-based desktop environment."
 }
