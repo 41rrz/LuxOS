@@ -247,6 +247,9 @@ function Taskbar({ now, windows, startOpen, setStartOpen, openApp, focusWindow, 
 function CalendarPanel({ now }: { now: Date }) {
   const first = new Date(now.getFullYear(), now.getMonth(), 1)
   const count = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  const cells = Array.from({ length: first.getDay() }, () => null).concat(Array.from({ length: count }, (_, index) => index + 1))
+  const cells: Array<number | null> = [
+    ...Array.from({ length: first.getDay() }, () => null),
+    ...Array.from({ length: count }, (_, index) => index + 1),
+  ]
   return <aside className="calendar-panel glass-panel" onPointerDown={event => event.stopPropagation()}><div className="calendar-time">{formatTime(now)}</div><div className="calendar-date">{formatDate(now)}</div><div className="calendar-month"><strong>{now.toLocaleDateString([], { month: 'long', year: 'numeric' })}</strong><div className="week-row">{'SMTWTFS'.split('').map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div><div className="days-grid">{cells.map((day, index) => <span key={index} className={day === now.getDate() ? 'today' : ''}>{day}</span>)}</div></div></aside>
 }
