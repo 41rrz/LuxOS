@@ -30,7 +30,7 @@ function LuxHome({ openApp }: Pick<Props, 'openApp'>) {
       </div>
       <section className="info-panel">
         <div><span>Edition</span><strong>LuxOS Desktop</strong></div>
-        <div><span>Version</span><strong>0.2 Preview</strong></div>
+        <div><span>Version</span><strong>0.3 Preview</strong></div>
         <div><span>Runtime</span><strong>Web / GitHub Pages</strong></div>
       </section>
     </div>
@@ -98,14 +98,14 @@ function Browser() {
 }
 
 function Terminal() {
-  const [lines, setLines] = useState(['LuxOS Command Shell [Version 0.2.0]', '(c) Lux. All rights reserved.', ''])
+  const [lines, setLines] = useState(['LuxOS Command Shell [Version 0.3.0]', '(c) Lux. All rights reserved.', ''])
   const [command, setCommand] = useState('')
   const run = () => {
     const raw = command.trim()
     const cmd = raw.toLowerCase()
     if (!cmd) return
     if (cmd === 'clear' || cmd === 'cls') { setLines([]); setCommand(''); return }
-    const response = cmd === 'help' ? 'Commands: help, ver, whoami, date, echo, clear' : cmd === 'ver' ? 'LuxOS Desktop 0.2.0' : cmd === 'whoami' ? 'lux-user' : cmd === 'date' ? new Date().toString() : cmd.startsWith('echo ') ? raw.slice(5) : `'${raw}' is not recognized as an internal command.`
+    const response = cmd === 'help' ? 'Commands: help, ver, whoami, date, echo, clear' : cmd === 'ver' ? 'LuxOS Desktop 0.3.0' : cmd === 'whoami' ? 'lux-user' : cmd === 'date' ? new Date().toString() : cmd.startsWith('echo ') ? raw.slice(5) : `'${raw}' is not recognized as an internal command.`
     setLines(current => [...current, `C:\\Users\\Lux>${raw}`, response, ''])
     setCommand('')
   }
@@ -113,11 +113,35 @@ function Terminal() {
 }
 
 function Themes({ settings, updateSettings }: Pick<Props, 'settings' | 'updateSettings'>) {
-  return <div className="app-page"><div className="page-heading"><span>Personalization</span><h2>Choose your LuxOS color</h2></div><div className="wallpaper-sample"><span /><strong>Lux Aurora</strong><small>Default desktop background</small></div><div className="accent-picker">{accents.map(accent => <button key={accent} className={`accent-${accent} ${settings.accent === accent ? 'active' : ''}`} onClick={() => updateSettings({ ...settings, accent })}><span /><strong>{accent}</strong></button>)}</div></div>
+  const wallpapers: Array<{ id: LuxSettings['wallpaper']; name: string; description: string }> = [
+    { id: 'aurora', name: 'Lux Aurora', description: 'Violet glass and drifting light' },
+    { id: 'midnight', name: 'Midnight', description: 'Deep blue desktop with cool highlights' },
+    { id: 'sunset', name: 'Afterglow', description: 'Purple, rose and warm horizon light' },
+  ]
+
+  return <div className="app-page personalize-page">
+    <div className="page-heading"><span>Personalization</span><h2>Make LuxOS yours</h2></div>
+    <div className="wallpaper-picker">
+      {wallpapers.map(wallpaper => <button key={wallpaper.id} className={`wallpaper-choice wallpaper-choice-${wallpaper.id} ${settings.wallpaper === wallpaper.id ? 'active' : ''}`} onClick={() => updateSettings({ ...settings, wallpaper: wallpaper.id })}><span className="wallpaper-preview" /><strong>{wallpaper.name}</strong><small>{wallpaper.description}</small></button>)}
+    </div>
+    <h3 className="personalize-label">Window color</h3>
+    <div className="accent-picker">{accents.map(accent => <button key={accent} className={`accent-${accent} ${settings.accent === accent ? 'active' : ''}`} onClick={() => updateSettings({ ...settings, accent })}><span /><strong>{accent}</strong></button>)}</div>
+  </div>
 }
 
 function Settings({ settings, updateSettings, onReset, openApp }: Pick<Props, 'settings' | 'updateSettings' | 'onReset' | 'openApp'>) {
-  return <div className="control-panel-page"><div className="control-panel-head"><span className="control-panel-mark">L</span><div><h2>Control Panel</h2><p>Adjust the way LuxOS looks and behaves.</p></div></div><div className="setting-categories"><button onClick={() => openApp('themes')}><span>◈</span><div><strong>Appearance and Personalization</strong><small>Colors, glass and desktop visuals</small></div></button><section><div><strong>Glass intensity</strong><small>{settings.glassIntensity}%</small></div><input type="range" min="35" max="100" value={settings.glassIntensity} onChange={event => updateSettings({ ...settings, glassIntensity: Number(event.target.value) })} /></section><section><div><strong>Reduce motion</strong><small>Use simpler desktop animations</small></div><button className={`toggle ${settings.reduceMotion ? 'on' : ''}`} onClick={() => updateSettings({ ...settings, reduceMotion: !settings.reduceMotion })}><i /></button></section><section><div><strong>Desktop icon labels</strong><small>Show names beneath desktop icons</small></div><button className={`toggle ${settings.showDesktopLabels ? 'on' : ''}`} onClick={() => updateSettings({ ...settings, showDesktopLabels: !settings.showDesktopLabels })}><i /></button></section></div><button className="reset-button" onClick={onReset}>Reset LuxOS local data</button></div>
+  return <div className="control-panel-page">
+    <div className="control-panel-head"><span className="control-panel-mark">L</span><div><h2>Control Panel</h2><p>Adjust the way LuxOS looks, sounds and behaves.</p></div></div>
+    <div className="setting-categories">
+      <button onClick={() => openApp('themes')}><span>◈</span><div><strong>Appearance and Personalization</strong><small>Wallpaper, colors, glass and desktop visuals</small></div></button>
+      <section><div><strong>Glass intensity</strong><small>{settings.glassIntensity}%</small></div><input type="range" min="35" max="100" value={settings.glassIntensity} onChange={event => updateSettings({ ...settings, glassIntensity: Number(event.target.value) })} /></section>
+      <section><div><strong>System sounds</strong><small>Play LuxOS interface and session sounds</small></div><button className={`toggle ${settings.systemSounds ? 'on' : ''}`} onClick={() => updateSettings({ ...settings, systemSounds: !settings.systemSounds })}><i /></button></section>
+      <section><div><strong>Master volume</strong><small>{settings.masterVolume}%</small></div><input type="range" min="0" max="100" value={settings.masterVolume} onChange={event => updateSettings({ ...settings, masterVolume: Number(event.target.value) })} /></section>
+      <section><div><strong>Reduce motion</strong><small>Use simpler desktop animations</small></div><button className={`toggle ${settings.reduceMotion ? 'on' : ''}`} onClick={() => updateSettings({ ...settings, reduceMotion: !settings.reduceMotion })}><i /></button></section>
+      <section><div><strong>Desktop icon labels</strong><small>Show names beneath desktop icons</small></div><button className={`toggle ${settings.showDesktopLabels ? 'on' : ''}`} onClick={() => updateSettings({ ...settings, showDesktopLabels: !settings.showDesktopLabels })}><i /></button></section>
+    </div>
+    <button className="reset-button" onClick={onReset}>Reset LuxOS local data</button>
+  </div>
 }
 
 export function AppContent(props: Props) {
