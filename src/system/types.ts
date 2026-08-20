@@ -2,12 +2,14 @@ import type { ReactNode } from 'react'
 
 export type AppId = 'lux' | 'files' | 'gallery' | 'notes' | 'projects' | 'browser' | 'themes' | 'terminal' | 'settings'
 export type Accent = 'violet' | 'blue' | 'pink' | 'orange' | 'green'
-export type Wallpaper = 'aurora' | 'midnight' | 'sunset'
+export type Wallpaper = 'aurora' | 'midnight' | 'sunset' | 'custom'
 export type SessionStage = 'boot' | 'login' | 'welcome' | 'desktop' | 'shutdown'
+export type WindowMotion = 'opening' | 'restoring' | 'minimizing' | 'closing'
 
 export interface LuxSettings {
   accent: Accent
   wallpaper: Wallpaper
+  customWallpaper?: string
   glassIntensity: number
   reduceMotion: boolean
   showDesktopLabels: boolean
@@ -37,6 +39,7 @@ export interface WindowState {
   z: number
   minimized: boolean
   maximized: boolean
+  motion?: WindowMotion
   restore?: {
     x: number
     y: number

@@ -6,10 +6,12 @@ import {
   defaultSettings,
   loadDesktopPositions,
   loadSettings,
+  loadPinnedOrder,
   loadWindowLayout,
   resetLuxStorage,
   saveDesktopPositions,
   saveSettings,
+  savePinnedOrder,
   saveWindowLayout,
 } from './system/storage'
 import type { AppId, DesktopPosition, LuxSettings, SessionStage, WindowState } from './system/types'
@@ -18,9 +20,10 @@ const TASKBAR_HEIGHT = 48
 const DESKTOP_ICON_WIDTH = 86
 const DESKTOP_ICON_HEIGHT = 88
 let windowSequence = 1
+let notificationSequence = 1
 
 type SnapMode = 'left' | 'right' | 'maximize' | null
-type TrayPanel = 'network' | 'volume' | null
+type TrayPanel = 'network' | 'volume' | 'notifications' | null
 
 type SelectionBox = {
   left: number
@@ -100,6 +103,12 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null)
   const [snapPreview, setSnapPreview] = useState<SnapMode>(null)
   const [altTab, setAltTab] = useState({ open: false, index: 0 })
+  const [pinnedOrder, setPinnedOrder] = useState<AppId[]>(() => loadPinnedOrder(pinnedApps.map(app => app.id)))
+  const [recentApps, setRecentApps] = useState<AppId[]>([])
+  const [peekDesktop, setPeekDesktop] = useState(false)
+  const [notifications, setNotifications] = useState<Array<{ id: number; title: string; message: string; time: string }>>([
+    { id: notificationSequence++, title: 'LuxOS 0.4', message: 'Virtual storage and the upgraded desktop shell are ready.', time: 'Now' },
+  ])
   const zRef = useRef(10)
 
   useEffect(() => {
@@ -108,6 +117,7 @@ export default function App() {
   }, [])
 
   useEffect(() => saveSettings(settings), [settings])
+  useEffect(() => savePinnedOrder(pinnedOrder), [pinnedOrder])
 
   useEffect(() => {
     const timer = window.setTimeout(() => saveDesktopPositions(desktopPositions), 140)
@@ -195,12 +205,22 @@ export default function App() {
 
   const accentStyle = useMemo(() => ({ '--glass-strength': `${settings.glassIntensity / 100}` } as CSSProperties), [settings.glassIntensity])
 
+  const pushNotification = (message: string, title = 'LuxOS') => {
+    setNotifications(current => [{ id: notificationSequence++, title, message, time: formatTime(new Date()) }, ...current].slice(0, 12))
+  }
+
+  const clearWindowMotion = (id: number) => {
+    window.setTimeout(() => setWindows(current => current.map(item => item.id === id ? { ...item, motion: undefined } : item)), settings.reduceMotion ? 0 : 210)
+  }
+
   const focusWindow = (id: number) => {
     const z = ++zRef.current
-    setWindows(current => current.map(item => item.id === id ? { ...item, z, minimized: false } : item))
+    setWindows(current => current.map(item => item.id === id ? { ...item, z, minimized: false, motion: item.minimized ? 'restoring' : item.motion } : item))
+    clearWindowMotion(id)
   }
 
   const openApp = (appId: AppId) => {
+    setRecentApps(current => [appId, ...current.filter(id => id !== appId)].slice(0, 5))
     setStartOpen(false)
     setContextMenu(null)
     setCalendarOpen(false)
@@ -233,12 +253,22 @@ export default function App() {
       z,
       minimized: false,
       maximized: Boolean(saved?.maximized),
+      motion: 'opening',
       restore: saved?.maximized ? { x, y, width, height } : undefined,
     }])
+    clearWindowMotion(windowSequence - 1)
   }
 
-  const closeWindow = (id: number) => setWindows(current => current.filter(item => item.id !== id))
-  const minimizeWindow = (id: number) => setWindows(current => current.map(item => item.id === id ? { ...item, minimized: true } : item))
+  const closeWindow = (id: number) => {
+    if (settings.reduceMotion) { setWindows(current => current.filter(item => item.id !== id)); return }
+    setWindows(current => current.map(item => item.id === id ? { ...item, motion: 'closing' } : item))
+    window.setTimeout(() => setWindows(current => current.filter(item => item.id !== id)), 170)
+  }
+  const minimizeWindow = (id: number) => {
+    if (settings.reduceMotion) { setWindows(current => current.map(item => item.id === id ? { ...item, minimized: true } : item)); return }
+    setWindows(current => current.map(item => item.id === id ? { ...item, motion: 'minimizing' } : item))
+    window.setTimeout(() => setWindows(current => current.map(item => item.id === id ? { ...item, minimized: true, motion: undefined } : item)), 170)
+  }
 
   const toggleMaximize = (id: number) => {
     setWindows(current => current.map(item => {
@@ -385,7 +415,8 @@ export default function App() {
     setLoginPassword('')
     window.setTimeout(() => {
       setStage('desktop')
-      setToast('Welcome to LuxOS Desktop 0.3')
+      setToast('Welcome to LuxOS Desktop 0.4')
+      pushNotification('Your desktop session is ready. Aero Peek, custom wallpaper and virtual storage are available.')
       window.setTimeout(() => setToast(null), 3200)
     }, settings.reduceMotion ? 250 : 1350)
   }
@@ -415,14 +446,16 @@ export default function App() {
     setSettings(defaultSettings)
     setDesktopPositions({})
     setWindowLayout({})
+    setPinnedOrder(pinnedApps.map(app => app.id))
     setToast('LuxOS local settings were reset')
+    pushNotification('Appearance, window and taskbar settings were reset. Your virtual files were kept.')
   }
 
   const filteredApps = apps.filter(app => `${app.name} ${app.subtitle}`.toLowerCase().includes(search.toLowerCase()))
 
   return (
     <main className={`luxos desktop-os accent-${settings.accent} wallpaper-${settings.wallpaper} ${settings.reduceMotion ? 'reduce-motion' : ''}`} style={accentStyle}>
-      <div className="desktop-wallpaper" aria-hidden="true"><i className="beam beam-one" /><i className="beam beam-two" /><i className="glow glow-one" /><i className="glow glow-two" /><i className="stars" /></div>
+      <div className="desktop-wallpaper" aria-hidden="true" style={settings.wallpaper === 'custom' && settings.customWallpaper ? { backgroundImage: `linear-gradient(145deg, rgba(4,6,15,.28), rgba(18,8,40,.18)), url(${settings.customWallpaper})` } : undefined}><i className="beam beam-one" /><i className="beam beam-two" /><i className="glow glow-one" /><i className="glow glow-two" /><i className="stars" /></div>
 
       {stage === 'boot' && <BootScreen />}
       {stage === 'login' && <LoginScreen now={now} password={loginPassword} setPassword={setLoginPassword} login={login} powerOpen={powerOpen} setPowerOpen={setPowerOpen} restart={restart} shutdown={shutdown} />}
@@ -459,13 +492,13 @@ export default function App() {
           {selectionBox && <div className="desktop-selection" style={selectionBox} />}
           {snapPreview && <SnapPreview mode={snapPreview} />}
 
-          <div className="window-layer">
+          <div className={`window-layer ${peekDesktop ? 'peek-desktop' : ''}`}>
             {windows.map(item => {
               if (item.minimized) return null
               const app = appById[item.appId]
               return <article
                 key={item.id}
-                className={`os-window ${item.maximized ? 'maximized' : ''}`}
+                className={`os-window ${item.maximized ? 'maximized' : ''} ${item.motion ? `window-${item.motion}` : ''}`}
                 style={item.maximized ? { zIndex: item.z } : { zIndex: item.z, left: item.x, top: item.y, width: item.width, height: item.height }}
                 onPointerDown={event => { event.stopPropagation(); focusWindow(item.id) }}
               >
@@ -494,10 +527,11 @@ export default function App() {
             <button onClick={() => openApp('settings')}>Screen resolution</button>
           </div>}
 
-          {startOpen && <StartMenu search={search} setSearch={setSearch} apps={filteredApps} openApp={openApp} signOut={signOut} setPowerOpen={setPowerOpen} powerOpen={powerOpen} shutdown={shutdown} restart={restart} />}
+          {startOpen && <StartMenu search={search} setSearch={setSearch} apps={filteredApps} recentApps={recentApps} openApp={openApp} signOut={signOut} setPowerOpen={setPowerOpen} powerOpen={powerOpen} shutdown={shutdown} restart={restart} />}
           {calendarOpen && <CalendarPanel now={now} />}
           {trayPanel === 'network' && <NetworkFlyout />}
           {trayPanel === 'volume' && <VolumeFlyout settings={settings} updateSettings={setSettings} testSound={() => playSystemSound('notify', settings)} />}
+          {trayPanel === 'notifications' && <NotificationFlyout notifications={notifications} clear={() => setNotifications([])} />}
           {altTab.open && <AltTabSwitcher windows={sortedWindows} index={altTab.index} />}
           {toast && <div className="toast glass-panel"><span className="toast-mark">L</span><div><strong>LuxOS</strong><small>{toast}</small></div></div>}
 
@@ -510,6 +544,11 @@ export default function App() {
             focusWindow={focusWindow}
             closeWindow={closeWindow}
             setWindows={setWindows}
+            minimizeWindow={minimizeWindow}
+            pinnedOrder={pinnedOrder}
+            setPinnedOrder={setPinnedOrder}
+            setPeekDesktop={setPeekDesktop}
+            notificationCount={notifications.length}
             calendarOpen={calendarOpen}
             setCalendarOpen={value => { setCalendarOpen(value); setTrayPanel(null); setStartOpen(false) }}
             trayPanel={trayPanel}
@@ -526,7 +565,7 @@ function SnapPreview({ mode }: { mode: Exclude<SnapMode, null> }) {
 }
 
 function BootScreen() {
-  return <section className="session-screen boot-screen"><div className="boot-brand"><span className="lux-orb">L</span><div><strong>LuxOS</strong><small>Desktop 0.3</small></div></div><div className="boot-dots"><i /><i /><i /><i /></div><small className="session-copyright">© Lux</small></section>
+  return <section className="session-screen boot-screen"><div className="boot-brand"><span className="lux-orb">L</span><div><strong>LuxOS</strong><small>Desktop 0.4</small></div></div><div className="boot-dots"><i /><i /><i /><i /></div><small className="session-copyright">© Lux</small></section>
 }
 
 function LoginScreen({ now, password, setPassword, login, powerOpen, setPowerOpen, restart, shutdown }: { now: Date; password: string; setPassword: (value: string) => void; login: () => void; powerOpen: boolean; setPowerOpen: (value: boolean) => void; restart: () => void; shutdown: () => void }) {
@@ -541,38 +580,58 @@ function ShutdownScreen({ restart }: { restart: () => void }) {
   return <section className="session-screen shutdown-screen"><div className="boot-brand"><span className="lux-orb">L</span><div><strong>LuxOS</strong><small>Shutting down...</small></div></div><button onClick={restart}>Start LuxOS again</button></section>
 }
 
-function StartMenu({ search, setSearch, apps, openApp, signOut, setPowerOpen, powerOpen, shutdown, restart }: { search: string; setSearch: (value: string) => void; apps: typeof import('./system/apps').apps; openApp: (id: AppId) => void; signOut: () => void; setPowerOpen: (value: boolean) => void; powerOpen: boolean; shutdown: () => void; restart: () => void }) {
-  return <aside className="start-menu glass-panel" onPointerDown={event => event.stopPropagation()}><div className="start-user"><div className="start-avatar">L</div><div><strong>Lux</strong><small>LuxOS User</small></div></div><div className="start-columns"><div className="start-left"><div className="start-app-list">{apps.map(app => <button key={app.id} onClick={() => openApp(app.id)}><span className={`start-app-icon ${app.className}`}>{app.icon}</span><div><strong>{app.name}</strong><small>{app.subtitle}</small></div></button>)}</div><div className="start-search"><input autoFocus={false} value={search} onChange={event => setSearch(event.target.value)} placeholder="Search programs and files" /><span>⌕</span></div></div><div className="start-right"><button onClick={() => openApp('files')}>Documents</button><button onClick={() => openApp('gallery')}>Pictures</button><button onClick={() => openApp('projects')}>Projects</button><hr /><button onClick={() => openApp('settings')}>Control Panel</button><button onClick={() => openApp('settings')}>Devices</button><button onClick={() => openApp('lux')}>Help and Support</button></div></div><div className="start-footer"><button className="signout" onClick={signOut}>Lock</button><div className="start-power"><button onClick={shutdown}>Shut down</button><button className="power-arrow" onClick={() => setPowerOpen(!powerOpen)}>▴</button>{powerOpen && <div className="power-flyout"><button onClick={signOut}>Log off</button><button onClick={restart}>Restart</button><button onClick={shutdown}>Shut down</button></div>}</div></div></aside>
+function StartMenu({ search, setSearch, apps, recentApps, openApp, signOut, setPowerOpen, powerOpen, shutdown, restart }: { search: string; setSearch: (value: string) => void; apps: typeof import('./system/apps').apps; recentApps: AppId[]; openApp: (id: AppId) => void; signOut: () => void; setPowerOpen: (value: boolean) => void; powerOpen: boolean; shutdown: () => void; restart: () => void }) {
+  const recent = recentApps.map(id => appById[id]).filter(Boolean)
+  return <aside className="start-menu glass-panel start-menu-v4" onPointerDown={event => event.stopPropagation()}>
+    <div className="start-user"><div className="start-avatar">L</div><div><strong>Lux</strong><small>LuxOS User</small></div></div>
+    <div className="start-columns"><div className="start-left">
+      {recent.length > 0 && !search && <div className="start-recent"><span className="start-section-label">Recently used</span>{recent.slice(0, 3).map(app => <button key={app.id} onClick={() => openApp(app.id)}><span className={`start-app-icon ${app.className}`}>{app.icon}</span><div><strong>{app.name}</strong><small>{app.subtitle}</small></div></button>)}</div>}
+      <div className="start-app-list">{apps.map(app => <button key={app.id} onClick={() => openApp(app.id)}><span className={`start-app-icon ${app.className}`}>{app.icon}</span><div><strong>{app.name}</strong><small>{app.subtitle}</small></div></button>)}</div>
+      <div className="start-search"><input autoFocus={false} value={search} onChange={event => setSearch(event.target.value)} placeholder="Search programs and files" /><span>⌕</span></div>
+    </div><div className="start-right"><button onClick={() => openApp('files')}>Computer</button><button onClick={() => openApp('files')}>Documents</button><button onClick={() => openApp('gallery')}>Pictures</button><button onClick={() => openApp('projects')}>Projects</button><hr /><button onClick={() => openApp('settings')}>Control Panel</button><button onClick={() => openApp('themes')}>Personalize</button><button onClick={() => openApp('lux')}>Help and Support</button></div></div>
+    <div className="start-footer"><button className="signout" onClick={signOut}>Lock</button><div className="start-power"><button onClick={shutdown}>Shut down</button><button className="power-arrow" onClick={() => setPowerOpen(!powerOpen)}>▴</button>{powerOpen && <div className="power-flyout"><button onClick={signOut}>Log off</button><button onClick={restart}>Restart</button><button onClick={shutdown}>Shut down</button></div>}</div></div>
+  </aside>
 }
 
-function Taskbar({ now, windows, startOpen, setStartOpen, openApp, focusWindow, closeWindow, setWindows, calendarOpen, setCalendarOpen, trayPanel, setTrayPanel }: { now: Date; windows: WindowState[]; startOpen: boolean; setStartOpen: (value: boolean) => void; openApp: (id: AppId) => void; focusWindow: (id: number) => void; closeWindow: (id: number) => void; setWindows: Dispatch<SetStateAction<WindowState[]>>; calendarOpen: boolean; setCalendarOpen: (value: boolean) => void; trayPanel: TrayPanel; setTrayPanel: (value: TrayPanel) => void }) {
+function Taskbar({ now, windows, startOpen, setStartOpen, openApp, focusWindow, closeWindow, setWindows, minimizeWindow, pinnedOrder, setPinnedOrder, setPeekDesktop, notificationCount, calendarOpen, setCalendarOpen, trayPanel, setTrayPanel }: { now: Date; windows: WindowState[]; startOpen: boolean; setStartOpen: (value: boolean) => void; openApp: (id: AppId) => void; focusWindow: (id: number) => void; closeWindow: (id: number) => void; setWindows: Dispatch<SetStateAction<WindowState[]>>; minimizeWindow: (id: number) => void; pinnedOrder: AppId[]; setPinnedOrder: Dispatch<SetStateAction<AppId[]>>; setPeekDesktop: (value: boolean) => void; notificationCount: number; calendarOpen: boolean; setCalendarOpen: (value: boolean) => void; trayPanel: TrayPanel; setTrayPanel: (value: TrayPanel) => void }) {
   const [hoveredWindow, setHoveredWindow] = useState<number | null>(null)
   const topVisible = [...windows].filter(item => !item.minimized).sort((a, b) => b.z - a.z)[0]
 
   const toggleWindow = (item: WindowState) => {
     if (item.minimized || topVisible?.id !== item.id) focusWindow(item.id)
-    else setWindows(current => current.map(win => win.id === item.id ? { ...win, minimized: true } : win))
+    else minimizeWindow(item.id)
+  }
+
+  const movePin = (dragged: AppId, target: AppId) => {
+    if (dragged === target) return
+    setPinnedOrder(current => {
+      const next = current.filter(id => id !== dragged)
+      const index = next.indexOf(target)
+      next.splice(index < 0 ? next.length : index, 0, dragged)
+      return next
+    })
   }
 
   const renderSlot = (appId: AppId, compact = true) => {
     const app = appById[appId]
     const running = windows.find(win => win.appId === appId)
-    return <div className="taskbar-slot" key={appId} onPointerEnter={() => running && setHoveredWindow(running.id)} onPointerLeave={() => setHoveredWindow(current => current === running?.id ? null : current)}>
-      <button className={`taskbar-app ${running ? 'running' : ''} ${running && topVisible?.id === running.id ? 'active' : ''}`} onClick={() => running ? toggleWindow(running) : openApp(appId)} title={app.name}><span className={`task-icon ${app.className}`}>{app.icon}</span>{!compact && <span>{app.name}</span>}</button>
+    return <div className="taskbar-slot" key={appId} draggable onDragStart={event => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/lux-pin', appId) }} onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); const dragged = event.dataTransfer.getData('text/lux-pin') as AppId; if (dragged) movePin(dragged, appId) }} onPointerEnter={() => running && setHoveredWindow(running.id)} onPointerLeave={() => setHoveredWindow(current => current === running?.id ? null : current)}>
+      <button className={`taskbar-app ${running ? 'running' : ''} ${running && topVisible?.id === running.id ? 'active' : ''}`} onClick={() => running ? toggleWindow(running) : openApp(appId)} title={`${app.name} • drag to reorder`}><span className={`task-icon ${app.className}`}>{app.icon}</span>{!compact && <span>{app.name}</span>}</button>
       {running && hoveredWindow === running.id && <TaskbarPreview item={running} closeWindow={closeWindow} focusWindow={focusWindow} />}
     </div>
   }
 
-  return <footer className="taskbar" onPointerDown={event => event.stopPropagation()}>
+  return <footer className="taskbar taskbar-v4" onPointerDown={event => event.stopPropagation()}>
     <button className={`start-orb ${startOpen ? 'active' : ''}`} onClick={() => setStartOpen(!startOpen)} aria-label="Start"><span>L</span></button>
-    <div className="taskbar-pinned">{pinnedApps.map(app => renderSlot(app.id))}</div>
-    <div className="taskbar-running">{windows.filter(win => !pinnedApps.some(app => app.id === win.appId)).map(win => <div className="taskbar-slot running-slot" key={win.id} onPointerEnter={() => setHoveredWindow(win.id)} onPointerLeave={() => setHoveredWindow(current => current === win.id ? null : current)}><button className={`running-button ${topVisible?.id === win.id && !win.minimized ? 'active' : ''}`} onClick={() => toggleWindow(win)}><span className={`task-icon ${appById[win.appId].className}`}>{appById[win.appId].icon}</span><span>{appById[win.appId].name}</span></button>{hoveredWindow === win.id && <TaskbarPreview item={win} closeWindow={closeWindow} focusWindow={focusWindow} />}</div>)}</div>
+    <div className="taskbar-pinned">{pinnedOrder.map(appId => renderSlot(appId))}</div>
+    <div className="taskbar-running">{windows.filter(win => !pinnedOrder.includes(win.appId)).map(win => <div className="taskbar-slot running-slot" key={win.id} onPointerEnter={() => setHoveredWindow(win.id)} onPointerLeave={() => setHoveredWindow(current => current === win.id ? null : current)}><button className={`running-button ${topVisible?.id === win.id && !win.minimized ? 'active' : ''}`} onClick={() => toggleWindow(win)}><span className={`task-icon ${appById[win.appId].className}`}>{appById[win.appId].icon}</span><span>{appById[win.appId].name}</span></button>{hoveredWindow === win.id && <TaskbarPreview item={win} closeWindow={closeWindow} focusWindow={focusWindow} />}</div>)}</div>
     <div className="system-tray">
       <button title="Hidden icons">▴</button>
       <button className={trayPanel === 'network' ? 'active' : ''} title="Network" onClick={() => setTrayPanel(trayPanel === 'network' ? null : 'network')}>⌁</button>
       <button className={trayPanel === 'volume' ? 'active' : ''} title="Volume" onClick={() => setTrayPanel(trayPanel === 'volume' ? null : 'volume')}>◖</button>
+      <button className={`notification-tray ${trayPanel === 'notifications' ? 'active' : ''}`} title="Notifications" onClick={() => setTrayPanel(trayPanel === 'notifications' ? null : 'notifications')}><span>◇</span>{notificationCount > 0 && <i>{notificationCount > 9 ? '9+' : notificationCount}</i>}</button>
       <button className={`tray-clock ${calendarOpen ? 'active' : ''}`} onClick={() => setCalendarOpen(!calendarOpen)}><strong>{formatTime(now)}</strong><small>{now.toLocaleDateString([], { month: 'numeric', day: 'numeric', year: '2-digit' })}</small></button>
-      <button className="show-desktop" onClick={() => setWindows(current => current.map(win => ({ ...win, minimized: true })))} title="Show desktop" />
+      <button className="show-desktop" onPointerEnter={() => setPeekDesktop(true)} onPointerLeave={() => setPeekDesktop(false)} onClick={() => { setPeekDesktop(false); setWindows(current => current.map(win => ({ ...win, minimized: true }))) }} title="Show desktop / Aero Peek" />
     </div>
   </footer>
 }
@@ -593,6 +652,10 @@ function NetworkFlyout() {
 
 function VolumeFlyout({ settings, updateSettings, testSound }: { settings: LuxSettings; updateSettings: (settings: LuxSettings) => void; testSound: () => void }) {
   return <aside className="tray-flyout volume-flyout glass-panel" onPointerDown={event => event.stopPropagation()}><div className="flyout-heading"><strong>Speakers</strong><small>LuxOS Audio</small></div><div className="volume-control"><span>◖</span><input aria-label="Master volume" type="range" min="0" max="100" value={settings.masterVolume} onChange={event => updateSettings({ ...settings, masterVolume: Number(event.target.value) })} onPointerUp={testSound} /><strong>{settings.masterVolume}</strong></div><button className="mixer-button" onClick={testSound}>Test system sound</button></aside>
+}
+
+function NotificationFlyout({ notifications, clear }: { notifications: Array<{ id: number; title: string; message: string; time: string }>; clear: () => void }) {
+  return <aside className="tray-flyout notification-flyout glass-panel" onPointerDown={event => event.stopPropagation()}><div className="notification-header"><div><strong>Notifications</strong><small>{notifications.length ? `${notifications.length} new` : 'You’re all caught up'}</small></div>{notifications.length > 0 && <button onClick={clear}>Clear all</button>}</div><div className="notification-list">{notifications.length ? notifications.map(item => <article key={item.id}><span className="notification-mark">L</span><div><div><strong>{item.title}</strong><time>{item.time}</time></div><p>{item.message}</p></div></article>) : <div className="notification-empty"><span>◇</span><strong>No new notifications</strong><small>LuxOS will surface system activity here.</small></div>}</div></aside>
 }
 
 function CalendarPanel({ now }: { now: Date }) {
